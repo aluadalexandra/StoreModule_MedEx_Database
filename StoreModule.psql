@@ -1,0 +1,124 @@
+-- 1. TABLE: merchant_profiles
+
+CREATE TABLE store_module.merchant_profiles (
+    merchant_id UUID PRIMARY KEY,
+
+    user_id UUID UNIQUE
+        REFERENCES user_address.users(user_id),
+        -- CARDINALITY: One-to-One (1:1)
+        -- This Table: One
+        -- Reference Table: One
+        -- Reference: user_address.users.user_id
+
+    shop_name VARCHAR(150) NOT NULL,
+
+    shop_address_id UUID
+        REFERENCES user_address.addresses(address_id),
+        -- CARDINALITY: Many-to-One (M:1)
+        -- This Table: Many
+        -- Reference Table: One
+        -- Reference: user_address.addresses.address_id
+
+    is_pharmacist BOOLEAN DEFAULT FALSE,
+    pharmacist_name VARCHAR(100) NULL,
+    pharmacist_licence_no VARCHAR(50) NULL,
+    contact_number VARCHAR(20) NULL,
+    is_24_hours BOOLEAN DEFAULT FALSE,
+    is_temporarily_closed BOOLEAN DEFAULT FALSE,
+    approval_status VARCHAR(20) NOT NULL,
+
+    approved_by UUID
+        REFERENCES user_address.users(user_id),
+        -- CARDINALITY: Many-to-One (M:1)
+        -- This Table: Many
+        -- Reference Table: One
+        -- Reference: user_address.users.user_id
+
+    approved_at TIMESTAMPTZ NULL,
+    rejection_reason TEXT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+-- 2. TABLE: merchant_hours
+
+CREATE TABLE store_module.merchant_hours (
+    merchant_id UUID PRIMARY KEY
+        REFERENCES store_module.merchant_profiles(merchant_id),
+        -- ACTUAL CARDINALITY: One-to-One (1:1)
+        -- This Table: One
+        -- Reference Table: One
+        -- Reference: store_module.merchant_profiles.merchant_id
+
+    day_of_week SMALLINT
+        CHECK (day_of_week BETWEEN 0 AND 6),
+    opens_at TIME NOT NULL,
+    closes_at TIME NOT NULL,
+    is_closed BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+-- 3. TABLE: product_categories
+
+CREATE TABLE store_module.product_categories (
+    category_id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+-- 4. TABLE: products
+
+CREATE TABLE store_module.products (
+    product_id UUID PRIMARY KEY,
+
+    merchant_id UUID
+        REFERENCES store_module.merchant_profiles(merchant_id),
+        -- CARDINALITY: Many-to-One (M:1)
+        -- This Table: Many
+        -- Reference Table: One
+        -- Reference: store_module.merchant_profiles.merchant_id
+
+    category_id INTEGER
+        REFERENCES store_module.product_categories(category_id),
+        -- CARDINALITY: Many-to-One (M:1)
+        -- This Table: Many
+        -- Reference Table: One
+        -- Reference: store_module.product_categories.category_id
+
+    name VARCHAR(150) NOT NULL,
+    generic_name VARCHAR(150) NOT NULL,
+    brand_name VARCHAR(150) NOT NULL,
+    description TEXT NULL,
+    unit VARCHAR(50) NULL,
+    strength VARCHAR(50) NULL,
+    dosage_form VARCHAR(50) NULL,
+    image_path TEXT NULL,
+    price NUMERIC(10,2) NOT NULL,
+    requires_prescription BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+-- 5. TABLE: inventory
+
+CREATE TABLE store_module.inventory (
+    product_id UUID PRIMARY KEY
+        REFERENCES store_module.products(product_id),
+        -- ACTUAL CARDINALITY: One-to-One (1:1)
+        -- This Table: One
+        -- Reference Table: One
+        -- Reference: store_module.products.product_id
+
+    stock_quantity INTEGER DEFAULT 0
+        CHECK (stock_quantity >= 0),
+    reserved_quantity INTEGER NOT NULL DEFAULT 0,
+    reorder_level INTEGER DEFAULT 10,
+    last_restocked_at TIMESTAMPTZ NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
